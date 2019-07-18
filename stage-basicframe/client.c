@@ -22,14 +22,69 @@
 /**************************************
  *函数名：do_query
  *参   数：消息结构体
- *功   能：登陆
+ *功   能：查找
  ****************************************/
 void do_admin_query(int sockfd,MSG *msg)
 {
 	printf("------------%s-----------%d.\n",__func__,__LINE__);
 
+	msg->msgtype = ADMIN_QUERY;
+	int n;
 
+	while(1)
+	{
+		memset(&msg->info,0,sizeof(staff_info_t));
+		if(msg->usertype == ADMIN)
+		{
+			printf("*************************************************************\n");
+			printf("******* 1：按人名查找  	2：查找所有 	3：退出	 *******\n");
+			printf("*************************************************************\n");
+			printf("请输入您的选择（数字）>>");
+			scanf("%d",&n);
+			getchar();
 
+			switch(n)
+			{
+			case 1:
+				msg->flags = 1;
+				break;
+			case 2:
+				msg->flags = 0;
+				break;
+			case 3:
+				return;
+			}	
+		}
+
+		if(msg->flags == 1)
+		{
+			printf("请输入您要查找的用户名：");
+			scanf("%s",msg->info.name);
+			getchar();
+
+			send(sockfd, msg, sizeof(MSG), 0);
+			recv(sockfd, msg, sizeof(MSG), 0);
+			printf("工号\t用户类型\t 姓名\t密码\t年龄\t电话\t地址\t职位\t入职年月\t等级\t 工资\n");
+
+			puts("======================================================================================");	
+			printf("%s.\n",msg->recvmsg);
+
+		}else{
+			send(sockfd, msg, sizeof(MSG), 0);
+			printf("工号\t用户类型\t 姓名\t密码\t年龄\t电话\t地址\t职位\t入职年月\t等级\t 工资\n");
+			while (1)
+			{
+				recv(sockfd, msg, sizeof(MSG), 0);
+				if(strncmp(msg->recvmsg , "over*",5) ==0)
+					break;
+
+				puts("======================================================================================");	
+				printf("%s.\n",msg->recvmsg);
+
+			}
+		}	
+	}	
+	printf("查找结束\n");	
 }
 
 
@@ -139,10 +194,108 @@ void do_admin_modification(int sockfd,MSG *msg)//管理员修改
  *函数名：admin_adduser
  *参   数：消息结构体
  *功   能：管理员创建用户
+
+ ------------do_admin_adduser-----------186.
+ ***************热烈欢迎新员工***************.
+ 请输入工号：1005 
+ 您输入的工号是：1005
+ 工号信息一旦录入无法更改，请确认您所输入的是否正确！(Y/N)y
+ 请输入用户名：zhangsan
+ 请输入用户密码：1
+ 请输入年龄：29
+ 请输入电话：15600700xxx
+ 请输入家庭住址：中国北京
+ 请输入职位：coder  
+ 请收入入职日期(格式：0000.00.00)：2019.3.25
+ 请输入评级(1~5,5为最高，新员工为 1)：1
+ 请输入工资：100
+ 是否为管理员：(Y/N)n
+ msg->info.usertype:1
+ 数据库修改成功!是否继续添加员工:(Y/N)n
  ****************************************/
 void do_admin_adduser(int sockfd,MSG *msg)//管理员添加用户
 {		
 	printf("------------%s-----------%d.\n",__func__,__LINE__);
+
+	msg->msgtype  = ADMIN_ADDUSER;
+	msg->usertype = ADMIN;
+	char a;
+	memset(&msg->info,0,sizeof(staff_info_t));
+
+	while(1){	
+		printf("***************热烈欢迎新员工***************.\n");
+		printf("请输入工号：");
+		scanf("%d",&msg->info.no); 
+		getchar();
+		printf("您输入的工号是：%d\n",msg->info.no);
+		printf("工号信息一旦录入无法更改，请确认您所输入的是否正确！(Y/N)");
+		scanf("%c",&a);
+		getchar();
+		if(a == 'N' || a == 'n'){
+			printf("请重新添加用户：");
+			break;
+		}
+
+		printf("请输入用户名：");
+		scanf("%s",msg->info.name);
+		getchar();
+
+		printf("请输入用户密码：");
+		scanf("%6s",msg->info.passwd);
+		getchar();
+
+		printf("请输入年龄：");
+		scanf("%d",&msg->info.age);
+		getchar();
+
+		printf("请输入电话：");
+		scanf("%s",msg->info.phone);
+		getchar();
+
+		printf("请输入家庭住址：");
+		scanf("%s",msg->info.addr);
+		getchar();
+
+		printf("请输入职位：");
+		scanf("%s",msg->info.work);
+		getchar();
+
+		printf("请收入入职日期(格式：0000.00.00)：");
+		scanf("%s",msg->info.date);
+		getchar();
+
+		printf("请输入评级(1~5,5为最高，新员工为 1)：");
+		scanf("%d",&msg->info.level);
+		getchar();
+
+		printf("请输入工资：");
+		scanf("%lf",&msg->info.salary);
+		getchar();
+
+		printf("是否为管理员：(Y/N)");
+		scanf("%c",&a);
+		getchar();
+		if(a == 'Y' || a == 'y')
+			msg->info.usertype = ADMIN;
+		else if(a == 'N' || a == 'n')
+			msg->info.usertype = USER;
+		printf("msg->info.usertype:%d\n",msg->info.usertype);
+
+		send(sockfd, msg, sizeof(MSG), 0);
+		recv(sockfd, msg, sizeof(MSG), 0);
+
+		if(strncmp(msg->recvmsg,"OK",2) == 0)
+			printf("添加成功！\n");
+		else
+			printf("%s",msg->recvmsg);
+
+		printf("是否继续添加员工:(Y/N)");
+		scanf("%c",&a);
+		getchar();
+		if(a == 'N' || a == 'n')
+			break;
+	}
+
 }
 
 
@@ -191,6 +344,11 @@ void do_admin_deluser(int sockfd,MSG *msg)//管理员删除用户
  *函数名：do_history
  *参   数：消息结构体
  *功   能：查看历史记录
+ *************************************************************
+
+ * ------------do_admin_history-----------308.
+ *  msg->recvmsg: 2019-3-25 12:22:5---admin---.
+ *  admin查询历史记录结束！
  ****************************************/
 void do_admin_history (int sockfd,MSG *msg)
 {
@@ -265,12 +423,17 @@ void admin_menu(int sockfd,MSG *msg)
 /**************************************
  *函数名：do_query
  *参   数：消息结构体
- *功   能：登陆
+ *功   能：查询
  ****************************************/
 void do_user_query(int sockfd,MSG *msg)
 {
 	printf("------------%s-----------%d.\n",__func__,__LINE__);
-
+	msg->msgtype = USER_QUERY;
+	send(sockfd, msg, sizeof(MSG), 0);
+	recv(sockfd, msg, sizeof(MSG), 0);
+	printf("工号\t用户类型\t 姓名\t密码\t年龄\t电话\t地址\t职位\t入职年月\t等级\t 工资\n");
+	puts("======================================================================================");	
+	printf("%s.\n",msg->recvmsg);
 }
 
 

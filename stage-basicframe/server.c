@@ -132,6 +132,42 @@ int process_user_query_request(int acceptfd,MSG *msg)
 {
 	printf("------------%s-----------%d.\n",__func__,__LINE__);
 
+	int i = 0,j = 0;
+	char sql[DATALEN] = {0};
+	char **resultp;
+	int nrow,ncolumn;
+	char *errmsg;
+
+	sprintf(sql,"select * from usrinfo where name='%s';",msg->username);
+	if(sqlite3_get_table(db, sql, &resultp,&nrow,&ncolumn,&errmsg) != SQLITE_OK){
+		printf("%s.\n",errmsg);
+	}else{
+		printf("searching.....\n");	
+		for(i = 0; i < ncolumn; i ++){
+			printf("%-8s ",resultp[i]);
+		}
+		puts("");
+		puts("======================================================================================");
+
+		int index = ncolumn;
+		for(i = 0; i < nrow; i ++){
+			printf("%s    %s     %s     %s     %s     %s     %s     %s     %s     %s     %s.\n",resultp[index+ncolumn-11],resultp[index+ncolumn-10],\
+					resultp[index+ncolumn-9],resultp[index+ncolumn-8],resultp[index+ncolumn-7],resultp[index+ncolumn-6],resultp[index+ncolumn-5],\
+					resultp[index+ncolumn-4],resultp[index+ncolumn-3],resultp[index+ncolumn-2],resultp[index+ncolumn-1]);
+
+			sprintf(msg->recvmsg,"%s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s;",resultp[index+ncolumn-11],resultp[index+ncolumn-10],\
+					resultp[index+ncolumn-9],resultp[index+ncolumn-8],resultp[index+ncolumn-7],resultp[index+ncolumn-6],resultp[index+ncolumn-5],\
+					resultp[index+ncolumn-4],resultp[index+ncolumn-3],resultp[index+ncolumn-2],resultp[index+ncolumn-1]);
+			send(acceptfd,msg,sizeof(MSG),0);
+
+			usleep(1000);
+			puts("======================================================================================");
+			index += ncolumn;
+		}
+
+		sqlite3_free_table(resultp);
+		printf("sqlite3_get_table successfully.\n");
+	}
 }
 
 
@@ -204,10 +240,38 @@ int process_admin_modify_request(int acceptfd,MSG *msg)
 
 
 int process_admin_adduser_request(int acceptfd,MSG *msg)
-//管理员添加用户请求
+	//管理员添加用户请求
 {
 	printf("------------%s-----------%d.\n",__func__,__LINE__);
 
+	char sql[DATALEN] = {0};
+	char buf[DATALEN] = {0};
+	char *errmsg;
+
+	printf("%d\t %d\t %s\t %s\t %d\n %s\t %s\t %s\t %s\t %d\t %f.\n",msg->info.no,msg->info.usertype,msg->info.name,msg->info.passwd,\
+			msg->info.age,msg->info.phone,msg->info.addr,msg->info.work,\
+			msg->info.date,msg->info.level,msg->info.salary);
+
+	sprintf(sql,"insert into usrinfo values(%d,%d,'%s','%s',%d,'%s','%s','%s','%s',%d,%f);",\
+			msg->info.no,msg->info.usertype,msg->info.name,msg->info.passwd,\
+			msg->info.age,msg->info.phone,msg->info.addr,msg->info.work,\
+			msg->info.date,msg->info.level,msg->info.salary);
+
+	if(sqlite3_exec(db,sql,NULL,NULL,&errmsg)!= SQLITE_OK){
+		printf("----------%s.\n",errmsg);
+		strcpy(msg->recvmsg,"failed");
+		send(acceptfd,msg,sizeof(MSG),0);
+		return -1;
+	}else{
+		strcpy(msg->recvmsg,"OK");
+		send(acceptfd,msg,sizeof(msg),0);
+		printf("%s register success.\n",msg->info.name);
+	}
+
+	sprintf(buf,"管理员%s添加了%s用户",msg->username,msg->info.name);
+	history_init(msg,buf);
+
+	return 0;
 }
 
 
@@ -246,7 +310,56 @@ int process_admin_query_request(int acceptfd,MSG *msg)
 {
 	printf("------------%s-----------%d.\n",__func__,__LINE__);
 
+	int i = 0,j = 0;
+	char sql[DATALEN] = {0};
+	char **resultp;
+	int nrow,ncolumn;
+	char *errmsg;
+
+	if(msg->flags == 1){
+		sprintf(sql,"select * from usrinfo where name='%s';",msg->info.name);
+	}else{
+		sprintf(sql,"select * from usrinfo;");
+	}
+
+	if(sqlite3_get_table(db, sql, &resultp,&nrow,&ncolumn,&errmsg) != SQLITE_OK){
+		printf("%s.\n",errmsg);
+	}else{
+		printf("searching.....\n");
+		printf("ncolumn :%d\tnrow :%d.\n",ncolumn,nrow);
+
+		for(i = 0; i < ncolumn; i ++){
+			printf("%-8s ",resultp[i]);
+		}
+		puts("");
+		puts("=============================================================");
+		int index = ncolumn;
+		for(i = 0; i < nrow; i ++){
+			char sql[DATALEN] = {0};
+			printf("%s    %s     %s     %s     %s     %s     %s     %s     %s     %s     %s.\n",resultp[index+ncolumn-11],resultp[index+ncolumn-10],\
+					resultp[index+ncolumn-9],resultp[index+ncolumn-8],resultp[index+ncolumn-7],resultp[index+ncolumn-6],resultp[index+ncolumn-5],\
+					resultp[index+ncolumn-4],resultp[index+ncolumn-3],resultp[index+ncolumn-2],resultp[index+ncolumn-1]);
+
+			sprintf(msg->recvmsg,"%s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s,    %s;",resultp[index+ncolumn-11],resultp[index+ncolumn-10],\
+					resultp[index+ncolumn-9],resultp[index+ncolumn-8],resultp[index+ncolumn-7],resultp[index+ncolumn-6],resultp[index+ncolumn-5],\
+					resultp[index+ncolumn-4],resultp[index+ncolumn-3],resultp[index+ncolumn-2],resultp[index+ncolumn-1]);
+			send(acceptfd,msg,sizeof(MSG),0);
+
+			usleep(1000);
+			puts("=============================================================");
+			index += ncolumn;
+		}
+
+		if(msg->flags != 1){
+			strcpy(msg->recvmsg,"over*");
+			send(acceptfd,msg,sizeof(MSG),0);
+		}
+
+		sqlite3_free_table(resultp);
+		printf("sqlite3_get_table successfully.\n");
+	}
 }
+
 
 int history_callback(void *arg, int ncolumn, char **f_value, char **f_name)
 {
