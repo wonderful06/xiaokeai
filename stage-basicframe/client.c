@@ -31,6 +31,9 @@ void do_admin_query(int sockfd,MSG *msg)
 	msg->msgtype = ADMIN_QUERY;
 	int n;
 
+
+
+
 	while(1)
 	{
 		memset(&msg->info,0,sizeof(staff_info_t));
